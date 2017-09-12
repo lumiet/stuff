@@ -1,0 +1,380 @@
+/*
+
+die a death
+
+hsv conversion :
+https://gist.github.com/yoggy/8999625 
+
+*/
+
+///////
+const int numbgenerated = 300;
+///////
+
+
+#include <iostream>
+#include <SFML/Graphics.hpp>
+#include <ctime>
+#include <String>
+
+using namespace std;
+using namespace sf;
+
+const int bodycolors = 2; // as many colors as in pokedex (possible)
+const int pokemoncount = 649; //all pokemon count (no exclusives/etc)
+
+Image utilizedimage;
+Image normalpallete;
+
+struct HSVcolor {
+	float h;
+	float s;
+	float v;
+
+	bool grayish = false;
+	bool transparent = false;
+	vector<Vector2i> coords;
+};
+
+struct HSVdifference {
+	float h=0;
+	float s=0;
+	float v=0;
+}difference;
+
+vector<HSVcolor> mainpallete;
+HSVcolor shinypallete[bodycolors][25] = { {},
+{} };
+
+#define min_f(a, b, c)  (fminf(a, fminf(b, c)))
+#define max_f(a, b, c)  (fmaxf(a, fmaxf(b, c)))
+
+HSVcolor rgb2hsv(Color color)
+{
+	HSVcolor convert; 
+
+	float r = color.r / 255.0f;
+	float g = color.g / 255.0f;
+	float b = color.b / 255.0f;
+
+	float h, s, v; // h:0-360.0, s:0.0-1.0, v:0.0-1.0
+
+	float max = max_f(r, g, b);
+	float min = min_f(r, g, b);
+
+	v = max;
+
+	if (max == 0.0f) {
+		s = 0;
+		h = 0;
+	}
+	else if (max - min == 0.0f) {
+		s = 0;
+		h = 0;
+	}
+	else {
+		s = (max - min) / max;
+
+		if (max == r) {
+			h = 60 * ((g - b) / (max - min)) + 0;
+		}
+		else if (max == g) {
+			h = 60 * ((b - r) / (max - min)) + 120;
+		}
+		else {
+			h = 60 * ((r - g) / (max - min)) + 240;
+		}
+	}
+
+	if (h < 0) h += 360.0f;
+
+	convert.h = (int)(h);   // dst_h : 0-360
+	convert.s = (int)(s * 100); // dst_s : 0-100
+	convert.v = (int)(v * 100); // dst_v : 0-100
+
+	return convert;
+}
+
+Color hsv2rgb(HSVcolor hsv)
+{
+	float h = hsv.h; // 0-360
+	float s = hsv.s / 100.0f; // 0.0-1.0
+	float v = hsv.v / 100.0f; // 0.0-1.0
+
+	float r, g, b; // 0.0-1.0
+
+	int   hi = (int)(h / 60.0f) % 6;
+	float f = (h / 60.0f) - hi;
+	float p = v * (1.0f - s);
+	float q = v * (1.0f - s * f);
+	float t = v * (1.0f - s * (1.0f - f));
+
+	switch (hi) {
+	case 0: r = v, g = t, b = p; break;
+	case 1: r = q, g = v, b = p; break;
+	case 2: r = p, g = v, b = t; break;
+	case 3: r = p, g = q, b = v; break;
+	case 4: r = t, g = p, b = v; break;
+	case 5: r = v, g = p, b = q; break;
+	}
+
+	Color convert;
+
+	convert.r = (int)(r * 255); // dst_r : 0-255
+	convert.g = (int)(g *255); // dst_r : 0-255
+	convert.b = (int)(b *255) ; // dst_r : 0-255
+
+	return convert;
+}
+
+void main() {
+	normalpallete.loadFromFile("spriteresources/bluespallete.png");
+	int count = 0;
+	for (int p = 0; p <= normalpallete.getSize().x; p += 6) {
+		for (int w = 0; w <= normalpallete.getSize().y; w += 6) {
+			mainpallete.push_back(rgb2hsv(normalpallete.getPixel(p, w)));
+				count++;
+		}
+	}
+
+	/*Color test = Color(62,34,73);
+	HSVcolor test2 = rgb2hsv(test);
+
+	cout << test2.h << " " << test2.s << " " << test2.v;
+
+	HSVcolor test3;
+	test3.h = 283;
+	test3.s = 53;
+	test3.v = 73;
+
+	Color test4 = hsv2rgb(test3);
+	cout << "\n" << (int)test4.r << " " << (int)test4.g << " " << (int)test4.b;
+
+*/
+	srand((unsigned int)time(NULL));
+
+	for (int l = 0; l < numbgenerated; l++) {
+/*
+KANTO 1-151 (range: 150)
+JOHTO 152-251 (range: 99)
+HOENN 252-386 (range: 134)
+SINNOH 387-493 (range: 106)
+UNOVA 494-649 (range: 155)
+*/
+	int utilizedimagenumb = rand() % (pokemoncount) + 1;       //   EDIT NUMBERS HERE     < - - - - - - - - - - 
+	String tempstring = "spriteresources/";
+	tempstring += to_string(utilizedimagenumb);
+	tempstring += ".png";
+	utilizedimage.loadFromFile(tempstring);
+
+	HSVcolor imagecolorarr[96][96];
+
+	vector<vector<HSVcolor>> knowncolors;
+	int knownhueavg=0;
+	vector<HSVcolor> grayishs;
+	
+		for (int i = 0; i < 96; i++) { //y
+			for (int j = 0; j < 96; j++) { //x
+
+				imagecolorarr[j][i] = rgb2hsv(utilizedimage.getPixel(j, i));
+				Vector2i colorcoords = Vector2i(j, i);
+				imagecolorarr[j][i].coords.push_back(colorcoords);
+				bool colorrepeat = false;
+
+				if (imagecolorarr[j][i].s == 0 && imagecolorarr[j][i].v == 0) {
+					imagecolorarr[j][i].transparent = true;
+				}
+				if (imagecolorarr[j][i].s * (imagecolorarr[j][i].v/2) < 1000 && !imagecolorarr[j][i].transparent) {
+					
+						imagecolorarr[j][i].grayish = true;
+						for (int o = 0; o < grayishs.size() && !colorrepeat; o++) {
+							if ((grayishs[o].h == imagecolorarr[j][i].h) && (grayishs[o].s == imagecolorarr[j][i].s) && (grayishs[o].v == imagecolorarr[j][i].v)) {
+								colorrepeat = true;
+								grayishs[o].coords.push_back(colorcoords);
+							}
+						}
+						if (!colorrepeat) {
+							grayishs.push_back(imagecolorarr[j][i]);
+						}
+					}
+				
+				if(!imagecolorarr[j][i].transparent && !imagecolorarr[j][i].grayish) {
+				if (knowncolors.size() == 0) {
+					vector<HSVcolor> nya = { imagecolorarr[j][i] };
+					knowncolors.push_back(nya);
+				}
+				for (int k = 0; k < knowncolors.size(); k++) {
+					for (int c = 0; c < knowncolors[k].size(); c++) {
+						if ((imagecolorarr[j][i].h == knowncolors[k][c].h) && (imagecolorarr[j][i].s == knowncolors[k][c].s) && (imagecolorarr[j][i].v == knowncolors[k][c].v)) {
+							colorrepeat = true;
+							knowncolors[k][c].coords.push_back(colorcoords);
+
+						}
+					}
+
+				}
+				if (!colorrepeat) {
+					for (int k = 0; k < knowncolors.size(); k++) {
+						for (int r = 0; r < knowncolors[k].size(); r++) {
+							knownhueavg += knowncolors[k][r].h;
+						}
+						knownhueavg /= knowncolors[k].size();
+						int over320 = imagecolorarr[j][i].h;
+						int existingover320 = knownhueavg;
+						if (over320 >= 320) {
+							over320 -= 360;
+						}
+						if (existingover320 >= 320) {
+							existingover320 -= 360;
+						}
+
+						if (abs((over320) - (existingover320) <= 40)|| abs((imagecolorarr[j][i].h) - (knowncolors[k][0].h ) <= 40) /*&& (over320 >= existingover320 - 40)*/) {
+							knowncolors[k].push_back(imagecolorarr[j][i]);
+							colorrepeat = true;
+						}
+					}
+
+					if (!colorrepeat) {
+						vector<HSVcolor> nya = { imagecolorarr[j][i] };
+						knowncolors.push_back(nya);
+						colorrepeat = true;
+					}
+				}
+				}
+
+			/**/}
+		}
+		//////////////////////////////////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////////////////////
+
+		vector<int> hueavg;
+
+		for (int s = 0; s < knowncolors.size(); s++) {
+			int total=0;
+			for (int h = 0; h < knowncolors[s].size(); h++) {
+				total += knowncolors[s][h].h;
+			}
+			hueavg.push_back(total / knowncolors[s].size());
+		}
+		int size = hueavg.size();
+		for (int a = 0; a < size; a++) {
+			for (int b = 0; b < size; b++) {
+				if ((hueavg[a] < (hueavg[b]+40)) && (hueavg[a] > (hueavg[b]-40)) && a!=b) {
+					for (int c = knowncolors[a].size()-1; c > 0; c--) {
+						knowncolors[b].push_back(knowncolors[a][c]);
+						knowncolors[a].pop_back();
+					}
+				}
+			}
+		}
+
+
+		if (grayishs.size() != 0) {
+			knowncolors.push_back(grayishs);
+			int grayavg = 0;
+			for (int h = 0; h < knowncolors[knowncolors.size() - 1].size(); h++) {
+				grayavg += knowncolors[knowncolors.size() - 1][h].h;
+			}
+			grayavg /= knowncolors[knowncolors.size() - 1].size();
+			for (int b = 0; b < size; b++) {
+				if ((grayavg < (hueavg[b] + 40)) && (grayavg > (hueavg[b] - 40))) {
+					for (int c = knowncolors[knowncolors.size() - 1].size()-1; c >= 0; c--) {
+						knowncolors[b].push_back(knowncolors[knowncolors.size() - 1][c]);
+						knowncolors[knowncolors.size() - 1].pop_back();
+					}
+					knowncolors.pop_back();
+				}
+			}
+		}
+
+
+
+
+		///////////////////////////////////////////////////////////////////////////////////////
+		///////////////////////////////////////////////////////////////////////////////////////
+		///////////////////////////////////////////////////////////////////////////////////////
+		///////////////////////////////////////////////////////////////////////////////////////
+
+
+
+		for (int i = 0; i < knowncolors.size(); i++) {
+			int colorpalletenumb = rand()%mainpallete.size();
+			int basevaluej = 0;
+			int highestamtj = 0;
+			int sechighestamtj = 0;
+
+			for (int f = 0; f < knowncolors[i].size(); f++) {
+				if (knowncolors[i][f].coords.size() > knowncolors[i][highestamtj].coords.size() &&!(knowncolors[i][f].s<=10)) {
+ 					sechighestamtj = highestamtj;
+					highestamtj = f;
+				}
+				else if (knowncolors[i][f].coords.size() == knowncolors[i][highestamtj].coords.size() && !(knowncolors[i][f].s <= 10)) {
+					if (knowncolors[i][f].v > knowncolors[i][highestamtj].v) {
+						sechighestamtj = highestamtj;
+						highestamtj = f;
+					}
+				}
+				else if ((knowncolors[i][f].coords.size() <= knowncolors[i][highestamtj].coords.size()) && (knowncolors[i][f].coords.size() > knowncolors[i][sechighestamtj].coords.size()) && !(knowncolors[i][f].s <= 10)) {
+					sechighestamtj = f;
+				}
+				else if (knowncolors[i][f].coords.size() == knowncolors[i][sechighestamtj].coords.size() && !(knowncolors[i][f].s <= 10)) {
+					if (knowncolors[i][f].v > knowncolors[i][highestamtj].v) {
+						sechighestamtj = f;
+					}
+				}
+			}
+
+			if ((knowncolors[i][highestamtj].v > knowncolors[i][sechighestamtj].v) || (knowncolors[i][highestamtj].s > knowncolors[i][sechighestamtj].s)) {
+				basevaluej = highestamtj;
+			}
+			else {
+				basevaluej = sechighestamtj;
+			}
+
+			for (int j = 0; j < knowncolors[i].size(); j++) {
+				difference.h = 0;
+				difference.s = 0;
+				difference.v = 0;
+				if (j != basevaluej) {
+					difference.h = knowncolors[i][basevaluej].h - (knowncolors[i][j].h);
+					if (!knowncolors[i][j].grayish) difference.s = knowncolors[i][basevaluej].s - (knowncolors[i][j].s);
+					if (!knowncolors[i][j].grayish) difference.v = knowncolors[i][basevaluej].v - (knowncolors[i][j].v);
+				}
+				if (j == basevaluej) {
+					cout << "rrrr";
+				}
+					HSVcolor changedcolor;
+
+					changedcolor.h = abs(mainpallete[colorpalletenumb].h - (difference.h));
+					while (changedcolor.h >= 360) changedcolor.h -= 360;
+					while (changedcolor.h < 0) changedcolor.h += 360;
+
+					changedcolor.s = abs(mainpallete[colorpalletenumb].s - (difference.s));
+					if (knowncolors[i][j].grayish) changedcolor.s = knowncolors[i][j].s+((100-knowncolors[i][j].v));
+					if (changedcolor.s > 100) changedcolor.s = 100;
+					if (changedcolor.s < 0) changedcolor.s = 0;
+
+					changedcolor.v = abs(mainpallete[colorpalletenumb].v - (difference.v));
+					if (knowncolors[i][j].grayish) { 
+						changedcolor.v = knowncolors[i][j].v; }
+					if (changedcolor.v > 100) changedcolor.v = 100;
+					if (changedcolor.v < 0) changedcolor.v = 0;
+
+					Color newColor = hsv2rgb(changedcolor);
+
+					for (int k = 0; k < knowncolors[i][j].coords.size(); k++) {
+					utilizedimage.setPixel(knowncolors[i][j].coords[k].x, knowncolors[i][j].coords[k].y, newColor);
+				}
+			}
+		}
+		String filename = "results/test/";  // CHANGE FOLDER OUTPUT     < - - - - - - - - - - - 
+		filename += to_string(utilizedimagenumb);
+		filename += "_";
+		filename += to_string(rand() % 50000);
+		filename += ".png";
+			utilizedimage.saveToFile(filename);
+		
+	}
+}
