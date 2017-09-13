@@ -1,16 +1,7 @@
 /*
-
-die a death
-
 hsv conversion :
 https://gist.github.com/yoggy/8999625 
-
 */
-
-///////
-const int numbgenerated = 300;
-///////
-
 
 #include <iostream>
 #include <SFML/Graphics.hpp>
@@ -19,6 +10,12 @@ const int numbgenerated = 300;
 
 using namespace std;
 using namespace sf;
+
+//////////////////////////////////////////
+const int numbgenerated = 50;
+String folderoutput = "test/";
+String palletename = "generatorpallete.png";
+//////////////////////////////////////////
 
 const int bodycolors = 2; // as many colors as in pokedex (possible)
 const int pokemoncount = 649; //all pokemon count (no exclusives/etc)
@@ -128,7 +125,9 @@ Color hsv2rgb(HSVcolor hsv)
 }
 
 void main() {
-	normalpallete.loadFromFile("spriteresources/bluespallete.png");
+	String palletepath = "palletes/";
+	palletepath += palletename;
+	normalpallete.loadFromFile(palletepath);
 	int count = 0;
 	for (int p = 0; p <= normalpallete.getSize().x; p += 6) {
 		for (int w = 0; w <= normalpallete.getSize().y; w += 6) {
@@ -310,16 +309,16 @@ UNOVA 494-649 (range: 155)
  					sechighestamtj = highestamtj;
 					highestamtj = f;
 				}
-				else if (knowncolors[i][f].coords.size() == knowncolors[i][highestamtj].coords.size() && !(knowncolors[i][f].s <= 10)) {
+				else if (knowncolors[i][f].coords.size() == knowncolors[i][highestamtj].coords.size() && !(knowncolors[i][f].grayish)) {
 					if (knowncolors[i][f].v > knowncolors[i][highestamtj].v) {
 						sechighestamtj = highestamtj;
 						highestamtj = f;
 					}
 				}
-				else if ((knowncolors[i][f].coords.size() <= knowncolors[i][highestamtj].coords.size()) && (knowncolors[i][f].coords.size() > knowncolors[i][sechighestamtj].coords.size()) && !(knowncolors[i][f].s <= 10)) {
+				else if ((knowncolors[i][f].coords.size() <= knowncolors[i][highestamtj].coords.size()) && (knowncolors[i][f].coords.size() > knowncolors[i][sechighestamtj].coords.size()) && !(knowncolors[i][f].grayish)) {
 					sechighestamtj = f;
 				}
-				else if (knowncolors[i][f].coords.size() == knowncolors[i][sechighestamtj].coords.size() && !(knowncolors[i][f].s <= 10)) {
+				else if (knowncolors[i][f].coords.size() == knowncolors[i][sechighestamtj].coords.size() && !(knowncolors[i][f].grayish)) {
 					if (knowncolors[i][f].v > knowncolors[i][highestamtj].v) {
 						sechighestamtj = f;
 					}
@@ -369,10 +368,11 @@ UNOVA 494-649 (range: 155)
 				}
 			}
 		}
-		String filename = "results/test/";  // CHANGE FOLDER OUTPUT     < - - - - - - - - - - - 
+		String filename = "results/";
+		filename += folderoutput;
 		filename += to_string(utilizedimagenumb);
 		filename += "_";
-		filename += to_string(rand() % 50000);
+		filename += to_string(rand() % 80000);
 		filename += ".png";
 			utilizedimage.saveToFile(filename);
 		
