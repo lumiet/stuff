@@ -1,6 +1,7 @@
 /*
 hsv conversion :
 https://gist.github.com/yoggy/8999625 
+made by paige mertely
 */
 
 #include <iostream>
